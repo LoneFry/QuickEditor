@@ -1,0 +1,16 @@
+QuickEditor
+A useful tool for making quick and dirty tests of HTML, CSS, and JavaScript
+
+License: CC BY-NC-SA 
+Creative Commons Attribution-NonCommercial-ShareAlike 
+http://creativecommons.org/licenses/by-nc-sa/3.0/
+
+2005?: initial IE version
+2007-4-30: cross browser version
+2007-5-21: improved range finding for multiline tab
+2011-5-25: altered backfeed to grab <html>.outer instead of <body>.inner
+
+If you find an error, or improvement, let me know: dev at lonfry dot com
+
+Quirks mode to support styling of textarea and iframe for height and width
+The Code validates, but since I'm in quirks mode, I don't badge that

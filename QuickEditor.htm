@@ -1,0 +1,283 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+	<!--
+/******************************************************************************
+ * QuickEditor
+ * A useful tool for making quick and dirty tests of HTML, CSS, and JavaScript
+ *
+ * License: CC BY-NC-SA 
+ * Creative Commons Attribution-NonCommercial-ShareAlike 
+ * http://creativecommons.org/licenses/by-nc-sa/3.0/
+ *
+ * 2005?: initial IE version
+ * 2007-4-30: cross browser version
+ * 2007-5-21: improved range finding for multiline tab
+ * 2011-5-25: altered backfeed to grab <html>.outer instead of <body>.inner
+ *
+ * If you find an error, or improvement, let me know: dev at lonefry dot com
+ *
+ * Quirks mode to support styling of textarea and iframe for height and width
+ * The Code validates, but since I'm in quirks mode, I don't badge that
+ *****************************************************************************/
+	-->
+	<head>
+		<title>Quick Editor</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<meta name="description" content="A useful tool for making quick and dirty tests of HTML, CSS, and JavaScript">
+		<meta name="keywords" content="Development, HTML, XHTML, DHTML, CSS, javascript, quick, edit">
+		<style type="text/css">
+			body {margin:0;padding:0;border:0;}
+			table#cheeseyTableLayout{height:100%;width:100%;}
+			div#quickEditor {height:100%}
+			div.QE_left  #one{margin:0;padding:0;border:0;width:49.9%;height:100%;float:left ;}           
+			div.QE_left  #two{margin:0;padding:0;border:0;width:50%  ;height:100%;float:right;}           
+			div.QE_top   #one{margin:0;padding:0;border:0;width:100% ;height:50% ;            }           
+			div.QE_top   #two{margin:0;padding:0;border:0;width:100% ;height:50% ;            }           
+			div.QE_right #one{margin:0;padding:0;border:0;width:49.9%;height:100%;float:right;}           
+			div.QE_right #two{margin:0;padding:0;border:0;width:50%  ;height:100%;float:left ;}           
+
+			#QE_body{margin:0;padding:0;border:0;width:100%;height:100%;background-color:#000;color:#fff;}
+			#QE_demo{margin:0;padding:0;border:0;width:100%;height:100%;background-color:#fff;}
+		</style>
+		<!--[if IE]>
+			<script type="text/javascript">var bIE=true;</script>
+		<![endif]-->
+		<script type="text/javascript"><!--
+			if (!bIE) var bIE=false;
+			bBackFeed=false;
+			bUpdate=true;
+
+			function QE_update() {
+				//to hack around an IE quirk, I am making the gross assumption
+				// that no one would have a &#28; in their text
+	
+				document.getElementById('QE_demo').contentWindow.document.designMode=bBackFeed?'on':'off';
+				QE_demo.document.open();
+				QE_demo.document.write(document.getElementById('QE_body').value.replace(/\034/g,''));
+				QE_demo.document.close();
+				if (bBackFeed) {
+					if (!bIE) {
+						document.getElementById('QE_demo').contentWindow.addEventListener("keyup", QE_backFeed, true);
+					} else {
+						document.getElementById('QE_demo').contentWindow.document.onkeyup=QE_backFeed;
+					}
+				}
+			}
+			function QE_backFeed() {
+				if (!bBackFeed) return;
+				//document.getElementById('QE_body').value=document.getElementById('QE_demo').contentWindow.document.body.innerHTML;
+				document.getElementById('QE_body').value=document.getElementById('QE_demo').contentWindow.document.body.parentNode.outerHTML;
+			}
+			function QE_savefile() {
+				if (!bIE) {
+					alert('I don\'t know how to do this in non-IE\nemail dev'+'@'+'lonefry.com with suggestions.');
+					return;
+				}
+				var d = document.getElementById('QE_demo').contentWindow.document;
+				d.open( 'text/html', 'replace' );
+				QE_demo.document.write(document.getElementById('QE_body').value.replace(/\034/g,''));
+				d.close();
+				
+				if(d.execCommand('SaveAs', null, 'edit_'+round(new Date()/1000)+'.htm')){
+					window.alert('The file has been saved.');
+				} else {
+					window.alert('The file has not been saved.\nIs there a problem?');
+				}
+			}
+			function IE_setSelectionRange(oTextarea, iStart, iEnd){
+				var oRng = oTextarea.createTextRange();
+				oRng.collapse(true);
+				oRng.moveStart("character", iStart);
+				oRng.moveEnd("character", iEnd - iStart);
+				oRng.select();
+			}
+			function IE_hackPara(oTextarea) {
+				//to hack around an IE quirk, I am making the gross assumption
+				// that no one would have a &#28; in their text
+	
+				if (!bIE)return;
+				if (oTextarea.value.charCodeAt(oTextarea.value.length-1)==13
+				 || oTextarea.value.charCodeAt(oTextarea.value.length-1)==10) {
+					oTextarea.value=oTextarea.value.replace(/\034/g,'')+String.fromCharCode(28);
+					IE_setSelectionRange(oTextarea,oTextarea.value.length-2,oTextarea.value.length-2);
+				}
+			}
+			function IE_unHackPara(oTextarea) {
+				//to hack around an IE quirk, I am making the gross assumption
+				// that no one would have a &#28; in their text
+	
+				if (!bIE)return;
+				oTextarea.value=oTextarea.value.replace(/\034/g,'');
+			}
+			function QE_catchKey(oTextarea,event) {
+				event=event||window.event;
+				var sTab='\t';
+
+				if (bIE) {
+					//the below method almost worked, except that IE likes to
+					//ignore trailing linebreaks, that's why I quietly add the
+					//&#28; FIRST thing in this function...or on keyup
+					var oRng = document.selection.createRange();
+					var oRng2 = oRng.duplicate();
+					oRng2.moveToElementText(oTextarea);
+					oRng2.setEndPoint('StartToEnd', oRng);
+					iEnd = oTextarea.value.length-oRng2.text.length;
+					oRng2.setEndPoint('StartToStart', oRng);
+					iStart = oTextarea.value.length-oRng2.text.length;
+
+					//handle tabs IE
+					if (9 == event.keyCode) {
+						oTextarea.focus();
+						var sNewText=sTab;
+
+						var aText=oTextarea.value.substring(iStart,iEnd).split('\n');
+						if (aText.length > 1) { //multi-line selection!
+							iStart = oTextarea.value.lastIndexOf('\n',iStart+1);
+							if (iStart == -1) iStart=0;
+							if (oTextarea.value.charCodeAt(iEnd)==13)iEnd-=1;
+							var sBefore=oTextarea.value.substring(0, iStart);
+							var sOldText=oTextarea.value.substring(iStart,iEnd);
+							var sAfter=oTextarea.value.substring(iEnd);
+							aText=sOldText.split('\n');
+							if (event.shiftKey) {
+								sNewText=sOldText.replace(new RegExp('\n'+sTab,'g'),'\n').replace(new RegExp('^'+sTab,''),'');
+							} else {
+								sNewText=(iStart==0?sTab:'')+aText.join('\n'+sTab);
+							}
+
+							oTextarea.value = sBefore + sNewText + sAfter;
+							IE_setSelectionRange(oTextarea, iStart-(sBefore.split('\n').length-1)
+								,iStart+sNewText.length-((sBefore+sNewText).split('\n').length-1));
+						} else {
+							oRng.text=sTab;
+							oRng.select();
+						}
+						return false;
+					} else
+
+					//handle returns IE
+					if (13 == event.keyCode) {
+						if (iStart==0) return true;
+						if (oTextarea.value.substr(iStart-1,0).charCodeAt(0) == 13) return true;
+
+						var iPrevLine = oTextarea.value.substring(0, iStart).lastIndexOf('\n');
+						if (iPrevLine == -1) iPrevLine=0;
+
+						var aBits=/^\n?([\t ]*)[^\t ]?/.exec(oTextarea.value.substring(iPrevLine, iStart));
+						if (!aBits || aBits[1].length==0)return true;
+
+						var sBefore=oTextarea.value.substring(0, iStart);
+						oTextarea.value = sBefore
+							+'\n'+aBits[1]
+							+oTextarea.value.substring(iEnd);
+						IE_setSelectionRange(oTextarea, (sBefore+aBits[1]).length+2-sBefore.split('\r').length
+							,(sBefore+aBits[1]).length+2-sBefore.split('\r').length);
+
+						return false;
+					}
+				} else {
+					var iStart = oTextarea.selectionStart;
+					var iEnd   = oTextarea.selectionEnd;
+					//handle tabs FF
+					if (9 == event.which) {
+						oTextarea.focus();
+						var sNewText=sTab;
+
+						var aText=oTextarea.value.substring(iStart,iEnd).split('\n');
+						if (aText.length > 1) { //multi-line selection!
+							iStart = oTextarea.value.lastIndexOf('\n',iStart+1);
+							if (iStart == -1) iStart=0;
+							if (oTextarea.value.charCodeAt(iEnd)==10)iEnd-=1;
+							var sBefore=oTextarea.value.substring(0, iStart);
+							var sOldText=oTextarea.value.substring(iStart,iEnd);
+							var sAfter=oTextarea.value.substring(iEnd);
+							aText=sOldText.split('\n');
+							if (event.shiftKey) {
+								sNewText=sOldText.replace(new RegExp('\n'+sTab,'g'),'\n').replace(new RegExp('^'+sTab,''),'');
+							} else {
+								sNewText=(iStart==0?sTab:'')+aText.join('\n'+sTab);
+							}
+
+							oTextarea.value = sBefore + sNewText + sAfter;
+							oTextarea.setSelectionRange(iStart,iStart+sNewText.length);
+						} else {
+							oTextarea.value = oTextarea.value.substring(0, iStart)
+								+sTab
+								+oTextarea.value.substring(iEnd);
+							oTextarea.setSelectionRange(iStart+sTab.length,iStart+sTab.length);
+						}
+						return false;
+					} else
+
+					//handle returns FF
+					if (13 == event.which) {
+						if (iStart==0) return true;
+
+						var iPrevLine = oTextarea.value.substring(0, iStart).lastIndexOf('\n');
+						if (iPrevLine == -1) iPrevLine=0;
+
+						var aBits=/^\n?([\t ]*)[^\t ]?/.exec(oTextarea.value.substring(iPrevLine, iStart));
+						if (!aBits || aBits[1].length==0)return true;
+
+						oTextarea.value = oTextarea.value.substring(0, iStart)
+							+'\n'+aBits[1]
+							+oTextarea.value.substring(iEnd);
+						oTextarea.setSelectionRange(iStart+aBits[1].length+1,iStart+aBits[1].length+1);
+
+						return false;
+					}
+				}
+			}
+		//--></script>
+	</head>
+	<body>
+		<table id="cheeseyTableLayout" width="100%" border="0" cellspacing="0" cellpadding="0">
+			<tr>
+				<td height="1">
+					<input type="button" onclick="document.getElementById('quickEditor').className='QE_left';" value="Text on Left">
+					<input type="button" onclick="document.getElementById('quickEditor').className='QE_top';" value="Text on Top">
+					<input type="button" onclick="document.getElementById('quickEditor').className='QE_right';" value="Text on Right">
+					<input type="checkbox" id="obBackFeed" onclick="bBackFeed=this.checked;if(bUpdate){QE_update();}" onchange="bBackFeed=this.checked;if(bUpdate){QE_update();}"><label for="obBackFeed">ContentEditable?</label>
+					<input type="checkbox" id="obUpdate"   onclick="bUpdate  =this.checked;if(bUpdate){QE_update();}" onchange="bUpdate  =this.checked;if(bUpdate){QE_update();}" checked="checked"><label for="obUpdate">Auto Update?</label>
+					<input type="button" onclick="QE_update();" value="Update">
+					<input type="button" onclick="QE_savefile();" value="Save File">
+				</td>
+			</tr>
+			<tr>
+				<td height="100%">
+					<div id="quickEditor" class="QE_top">
+						<div id="one"><textarea cols="80" rows="2" id="QE_body" onkeydown="return QE_catchKey(this,event);" 
+							onkeyup="IE_hackPara(this);if(bUpdate){QE_update();}" onchange="IE_hackPara(this);if(bUpdate){QE_update();}"
+							onblur="IE_unHackPara(this);">&lt;!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+&lt;html>
+	&lt;head>
+		&lt;title>Title&lt;/title>
+		&lt;meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		&lt;style type="text/css">
+			a img { border: 0; }
+			.u { text-decoration: underline; }
+		&lt;/style>
+		&lt;script type="text/javascript">
+		&lt;/script>
+	&lt;/head>
+	&lt;body>
+		&lt;p>&lt;b>HTML&lt;/b> &lt;i>typed in the black box&lt;/i> &lt;span class="u">renders in the white box&lt;/span>.&lt;/p>
+		&lt;p>
+			&lt;a href="http://validator.w3.org/check?uri=referer">&lt;img
+				src="http://www.w3.org/Icons/valid-html401"
+				alt="Valid HTML 4.01 Strict" height="31" width="88">&lt;/a>
+		&lt;/p>
+	&lt;/body>
+&lt;/html></textarea></div>
+						<div id="two"><iframe id="QE_demo" name="QE_demo" frameborder="0"></iframe></div>
+					</div>
+				</td>
+			</tr>
+		</table>
+
+		<script type="text/javascript">
+			QE_update();
+			document.getElementById('QE_body').focus();
+		</script>
+	</body>
+</html>
