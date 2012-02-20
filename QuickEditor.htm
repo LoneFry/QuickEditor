@@ -14,6 +14,7 @@
  * 2007-5-21: improved range finding for multiline tab
  * 2011-5-25: altered backfeed to grab <html>.outer instead of <body>.inner
  * 2012-2-19: altered style for readability: monospace font, tab-size, color
+ * 2012-2-20: Add cross browser buffer saving, remove related alerts
  *
  * If you find an error, or improvement, let me know: dev at lonefry dot com
  *
@@ -71,19 +72,15 @@
 				document.getElementById('QE_body').value=document.getElementById('QE_demo').contentWindow.document.body.parentNode.outerHTML;
 			}
 			function QE_savefile() {
-				if (!bIE) {
-					alert('I don\'t know how to do this in non-IE\nemail dev'+'@'+'lonefry.com with suggestions.');
-					return;
-				}
 				var d = document.getElementById('QE_demo').contentWindow.document;
 				d.open( 'text/html', 'replace' );
 				QE_demo.document.write(document.getElementById('QE_body').value.replace(/\034/g,''));
 				d.close();
 				
-				if(d.execCommand('SaveAs', null, 'edit_'+round(new Date()/1000)+'.htm')){
-					window.alert('The file has been saved.');
+				if (bIE) {
+					d.execCommand('SaveAs', null, 'edit_'+round(new Date()/1000)+'.htm');
 				} else {
-					window.alert('The file has not been saved.\nIs there a problem?');
+					QE_demo.location='data:application/octet-stream,'+encodeURIComponent(document.getElementById('QE_body').value.replace(/\034/g,''));
 				}
 			}
 			function IE_setSelectionRange(oTextarea, iStart, iEnd){
